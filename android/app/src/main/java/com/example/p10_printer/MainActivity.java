@@ -17,15 +17,33 @@ public class MainActivity extends FlutterActivity {
     private static final String PRINTER_STATE_CHANNEL = "com.example/printerStateStream";
 
     @Override
-    public  void configureFlutterEngine(@NonNull FlutterEngine flutterEngine) {
+    public void configureFlutterEngine(@NonNull FlutterEngine flutterEngine) {
         super.configureFlutterEngine(flutterEngine);
+        
         new MethodChannel(flutterEngine.getDartExecutor().getBinaryMessenger(), CHANNEL)
                 .setMethodCallHandler(
                         (call, result) -> {
                             if (call.method.equals("onPrint")) {
+                                // Print original receipt
                                 Printer.printerTest(MainActivity.this);
+                                result.success("Receipt printed successfully");
+                            } else if (call.method.equals("printCustomText")) {
+                                // Print custom text with parameter
+                                String customText = call.argument("text");
+                                if (customText != null) {
+                                    Printer.printCustomText(MainActivity.this, customText);
+                                    result.success("Custom text printed successfully");
+                                } else {
+                                    result.error("INVALID_ARGUMENT", "Text parameter is null", null);
+                                }
+                            } else if (call.method.equals("connectPrinterServices")) {
+                                // Connection method (if needed)
+                                result.success("Printer service connected");
+                            } else {
+                                result.notImplemented();
                             }
                         });
+        
         new EventChannel(flutterEngine.getDartExecutor().getBinaryMessenger(), PRINTER_STATE_CHANNEL)
                 .setStreamHandler(new EventChannel.StreamHandler() {
                     private Handler mainHandler = new Handler(Looper.getMainLooper());
@@ -38,7 +56,7 @@ public class MainActivity extends FlutterActivity {
                         // Simulating printer state changes
                         new Thread(() -> {
                             try {
-                                String[] printerStates = {"Idle", "Printing", "Error", "Out of Paper"};
+                                String[] printerStates = {"Idle", "Printing", "Ready", "Processing"};
                                 int index = 0;
 
                                 while (isRunning) {
